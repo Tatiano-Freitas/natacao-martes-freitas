@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Natação · Monitoramento</title>
+<link rel="stylesheet" href="/static/css/style.css?v=9">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#080F1A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MF Natação">
+</head>
+<body>
+<div class="bg-canvas">
+  <div class="bg-orb"></div><div class="bg-orb"></div>
+  <div class="bg-orb"></div><div class="bg-orb"></div>
+</div>
+<div id="app">
+  <main class="main">
+
+    <!-- DESEMPENHO -->
+    <section class="section active" id="s-desempenho">
+      <div class="page-title">Desempenho<br><span>Natação</span></div>
+      <div class="athlete-tabs" id="atabs-desempenho"></div>
+      <div class="summary-grid" id="summary-cards"></div>
+      <div class="glass-card">
+        <div class="glass-card-inner">
+          <div class="panel-hdr">
+            <span class="panel-title">Evolução por prova</span>
+            <select id="prova-select-mobile" class="glass-select" style="display:none;width:auto;height:36px;font-size:13px"></select>
+          </div>
+          <div class="prova-scroll" id="prova-tags"></div>
+          <div class="chart-wrap"><canvas id="evoChart" role="img" aria-label="Gráfico de evolução"></canvas></div>
+        </div>
+      </div>
+      <div class="glass-card">
+        <div class="glass-card-inner">
+          <div class="panel-hdr">
+            <span class="panel-title">Histórico</span>
+            <input type="text" id="hist-search" placeholder="🔍  Buscar…" class="search-glass">
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Data</th><th>Prova</th><th>Tempo</th><th>Cat</th><th>Pisc</th><th>Evento</th><th>Obs</th><th></th></tr></thead>
+              <tbody id="hist-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RECORDES -->
+    <section class="section" id="s-recordes">
+      <div class="page-title">Recordes<br><span>Pessoais</span></div>
+      <div class="athlete-tabs" id="atabs-recordes"></div>
+      <div class="rec-grid" id="rec-grid"></div>
+    </section>
+
+    <!-- COMPARATIVO -->
+    <section class="section" id="s-comparativo">
+      <div class="page-title">Compa-<br><span>rativo</span></div>
+      <div class="glass-card">
+        <div class="glass-card-inner">
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Prova</th><th id="cmp-h1" style="color:#5AC8FA">—</th><th id="cmp-h2" style="color:#BDB2FF">—</th><th>Δ (s)</th></tr></thead>
+              <tbody id="cmp-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ADICIONAR -->
+    <section class="section" id="s-adicionar">
+      <div class="page-title">Novo<br><span>Resultado</span></div>
+      <div class="glass-card">
+        <div class="glass-card-inner">
+          <form id="result-form" onsubmit="submitForm(event)">
+            <div class="form-grid">
+              <div class="field"><label>Atleta</label><select id="f-atleta" class="glass-select"></select></div>
+              <div class="field"><label>Data</label><input type="date" id="f-data" class="glass-input" required></div>
+              <div class="field">
+                <label>Prova</label>
+                <select id="f-prova" class="glass-select">
+                  <optgroup label="Livre"><option>Livre 50m</option><option>Livre 100m</option><option>Livre 200m</option><option>Livre 400m</option><option>Livre 800m</option></optgroup>
+                  <optgroup label="Costas"><option>Costas 50m</option><option>Costas 100m</option><option>Costas 200m</option></optgroup>
+                  <optgroup label="Peito"><option>Peito 50m</option><option>Peito 100m</option><option>Peito 200m</option></optgroup>
+                  <optgroup label="Borboleta"><option>Borboleta 50m</option><option>Borboleta 100m</option></optgroup>
+                  <optgroup label="Medley"><option>Medley 100m</option><option>Medley 200m</option><option>Medley 400m</option></optgroup>
+                  <optgroup label="Revezamento"><option>Revezamento 4x50m livre</option><option>Revezamento 4x50m medley misto</option></optgroup>
+                </select>
+              </div>
+              <div class="field"><label>Tempo <span class="hint">MM:SS.cc</span></label><input type="text" id="f-tempo" class="glass-input" placeholder="01:23.45"></div>
+              <div class="field"><label>Piscina</label><select id="f-pisc" class="glass-select"><option value="25">25 metros</option><option value="50">50 metros</option></select></div>
+              <div class="field"><label>Categoria</label><select id="f-cat" class="glass-select"><option value="">—</option><option value="P1">P1 — Petiz 1</option><option value="P2">P2 — Petiz 2</option><option value="INF">INF — Infantil</option></select></div>
+              <div class="field full"><label>Evento / Competição</label><input type="text" id="f-evento" class="glass-input" placeholder="AESJ, Sudeste, Campeonato Paulista…"></div>
+              <div class="field full"><label>Obs / Colocação</label><input type="text" id="f-obs" class="glass-input" placeholder="3° lugar, manhã, desclassificada…"></div>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn-glass btn-primary" id="submit-btn">Salvar resultado</button>
+              <button type="button" class="btn-glass" onclick="resetForm()">Limpar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="section-label">Últimos adicionados</div>
+      <div class="glass-card">
+        <div class="glass-card-inner">
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Atleta</th><th>Data</th><th>Prova</th><th>Tempo</th><th>Evento</th><th></th></tr></thead>
+              <tbody id="recent-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- INDICES -->
+    <section class="section" id="s-indices">
+      <div class="page-title">Índices<br><span>Mínimos</span></div>
+
+      <div class="athlete-tabs" id="atabs-indices"></div>
+
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap" id="camp-tabs"></div>
+
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">Categoria</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap" id="cat-tabs"></div>
+      </div>
+
+      <div class="glass-card">
+        <div class="glass-card-inner">
+          <div class="panel-hdr">
+            <span class="panel-title" id="indices-panel-title">Comparativo com melhor marca</span>
+            <select id="pisc-indices" class="glass-select" style="width:auto;height:36px;font-size:13px">
+              <option value="50">Piscina 50m</option>
+              <option value="25">Piscina 25m</option>
+            </select>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr>
+                <th>Prova</th>
+                <th>Índice mínimo</th>
+                <th>Melhor marca</th>
+                <th>Diferença</th>
+                <th>Status</th>
+                <th style="font-size:10px;color:var(--text3)">Editar índice</th>
+              </tr></thead>
+              <tbody id="indices-body"></tbody>
+            </table>
+          </div>
+          <div style="margin-top:14px;font-size:11px;color:rgba(255,255,255,0.3);line-height:1.7">
+            ⚠️ Índices baseados nas tabelas FAP e CBDA 2025. Verifique sempre os boletins oficiais em
+            <a href="https://www.aquaticapaulista.org.br" target="_blank" style="color:rgba(255,255,255,0.45)">aquaticapaulista.org.br</a>
+            e <a href="https://www.cbda.org.br" target="_blank" style="color:rgba(255,255,255,0.45)">cbda.org.br</a>.
+            Clique em ✎ para atualizar qualquer tempo.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONFIGURACOES -->
+    <section class="section" id="s-config">
+      <div class="page-title">Configu-<br><span>rações</span></div>
+
+      <div class="section-label">Atletas cadastradas</div>
+      <div class="glass-card">
+        <div class="glass-card-inner">
+          <div id="atletas-config-list"></div>
+        </div>
+      </div>
+
+      <div class="section-label">Adicionar nova atleta</div>
+      <div class="glass-card">
+        <div class="glass-card-inner">
+          <div class="form-grid">
+            <div class="field">
+              <label>Nome curto <span class="hint">(aparece nas abas)</span></label>
+              <input type="text" id="nova-nome" class="glass-input" placeholder="Ex: Maria">
+            </div>
+            <div class="field">
+              <label>Nome completo</label>
+              <input type="text" id="nova-nomec" class="glass-input" placeholder="Ex: Maria Silva Santos">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn-glass btn-primary" onclick="adicionarAtleta()">Adicionar atleta</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Sidebar navigation -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-logo" style="flex-direction:column;align-items:center;gap:8px;padding:0 4px;margin-bottom:28px;">
+      <div class="sidebar-brasao">
+        <svg width="180" height="205" viewBox="200 40 280 310" xmlns="http://www.w3.org/2000/svg">
+          <path d="M340 48 L448 94 L448 248 Q448 312 340 346 Q232 312 232 248 L232 94 Z" fill="#0d1f3c"/>
+          <path d="M340 53 L443 98 L443 247 Q443 308 340 341 Q237 308 237 247 L237 98 Z" fill="none" stroke="#C9A84C" stroke-width="2.8"/>
+          <path d="M340 62 L433 104 L433 246 Q433 302 340 333 Q247 302 247 246 L247 104 Z" fill="none" stroke="#C9A84C" stroke-width="0.7" opacity="0.3"/>
+          <text x="340" y="130" text-anchor="middle" font-family="Georgia, serif" font-size="13" font-weight="bold" fill="#C9A84C" letter-spacing="7">N A T A Ç Ã O</text>
+          <line x1="268" y1="138" x2="412" y2="138" stroke="#C9A84C" stroke-width="0.8" opacity="0.5"/>
+          <line x1="240" y1="220" x2="440" y2="220" stroke="#C9A84C" stroke-width="1.4" opacity="0.7"/>
+          <text x="340" y="206" text-anchor="middle" font-family="Georgia, serif" font-size="68" font-weight="bold" fill="#C9A84C" letter-spacing="-3">MF</text>
+          <path d="M252 246 Q276 233 300 246 Q324 259 348 246 Q372 233 396 246 Q420 259 432 246" fill="none" stroke="#C9A84C" stroke-width="2.8" stroke-linecap="round"/>
+          <path d="M252 264 Q276 253 300 264 Q324 275 348 264 Q372 253 396 264 Q420 275 432 264" fill="none" stroke="#C9A84C" stroke-width="1.8" stroke-linecap="round" opacity="0.55"/>
+          <path d="M235 98 L222 93 L226 80" fill="none" stroke="#C9A84C" stroke-width="1.3" opacity="0.45" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M445 98 L458 93 L454 80" fill="none" stroke="#C9A84C" stroke-width="1.3" opacity="0.45" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M235 248 L222 253 L226 266" fill="none" stroke="#C9A84C" stroke-width="1.3" opacity="0.45" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M445 248 L458 253 L454 266" fill="none" stroke="#C9A84C" stroke-width="1.3" opacity="0.45" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div style="text-align:center;">
+        <div class="sidebar-logo-text">Martes Freitas</div>
+        <div class="sidebar-logo-sub">Monitoramento</div>
+      </div>
+    </div>
+
+    <div class="sidebar-nav">
+      <div class="sidebar-section-label">Principal</div>
+
+      <button class="nav-item active" data-section="desempenho">
+        <div class="nav-item-icon">📊</div>
+        <span class="nav-item-label">Desempenho</span>
+      </button>
+      <button class="nav-item" data-section="recordes">
+        <div class="nav-item-icon">🏅</div>
+        <span class="nav-item-label">Recordes</span>
+      </button>
+      <button class="nav-item" data-section="comparativo">
+        <div class="nav-item-icon">⚖️</div>
+        <span class="nav-item-label">Comparativo</span>
+      </button>
+
+      <div class="sidebar-section-label">Dados</div>
+
+      <button class="nav-item" data-section="indices">
+        <div class="nav-item-icon">🎯</div>
+        <span class="nav-item-label">Índices</span>
+      </button>
+      <button class="nav-item nav-item-add" data-section="adicionar">
+        <div class="nav-item-icon">＋</div>
+        <span class="nav-item-label">Adicionar</span>
+      </button>
+
+      <div class="sidebar-bottom">
+        <button class="nav-item" data-section="config">
+          <div class="nav-item-icon">⚙️</div>
+          <span class="nav-item-label">Configurações</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+</div>
+
+<!-- Modal edição -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Editar resultado</div>
+    <form onsubmit="submitEdit(event)">
+      <div class="form-grid">
+        <div class="field"><label>Data</label><input type="date" id="e-data" class="glass-input"></div>
+        <div class="field"><label>Tempo</label><input type="text" id="e-tempo" class="glass-input" placeholder="01:23.45"></div>
+        <div class="field"><label>Piscina</label><select id="e-pisc" class="glass-select"><option value="25">25m</option><option value="50">50m</option></select></div>
+        <div class="field"><label>Categoria</label><select id="e-cat" class="glass-select"><option value="">—</option><option value="P1">P1</option><option value="P2">P2</option><option value="INF">INF</option></select></div>
+        <div class="field full"><label>Evento</label><input type="text" id="e-evento" class="glass-input"></div>
+        <div class="field full"><label>Obs</label><input type="text" id="e-obs" class="glass-input"></div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-glass btn-primary">Salvar</button>
+        <button type="button" class="btn-glass btn-danger" onclick="deleteResult()">Excluir</button>
+      </div>
+    </form>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="/static/js/app.js?v=9"></script>
+</body>
+</html>
