@@ -335,9 +335,22 @@ def seed_data():
             )
 
 # ── Rotas ──────────────────────────────────────────────────────────────────
+def _asset_v(rel_path):
+    """Versão do asset = mtime do arquivo. Bate o cache automaticamente
+    sempre que app.js/style.css forem alterados."""
+    try:
+        full = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", rel_path)
+        return str(int(os.path.getmtime(full)))
+    except Exception:
+        return "0"
+
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template(
+        "index.html",
+        css_v=_asset_v("css/style.css"),
+        js_v=_asset_v("js/app.js"),
+    )
 
 @app.route("/api/atletas")
 def api_atletas():
