@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, jsonify
-import sqlite3, os
+import sqlite3, os, re
 
 app = Flask(__name__)
 # Railway: usa /data (volume persistente) se existir, senão pasta local
@@ -42,6 +42,7 @@ def init_db():
             categoria TEXT,
             evento TEXT,
             obs TEXT,
+            periodo TEXT,
             criado_em TEXT DEFAULT (datetime('now'))
         );
         CREATE TABLE IF NOT EXISTS indices (
@@ -371,9 +372,9 @@ def add_resultado():
     d = request.json
     with get_db() as conn:
         conn.execute(
-            "INSERT INTO resultados (atleta_id,data,prova,tempo,tempo_segundos,piscina,categoria,evento,obs) VALUES (?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO resultados (atleta_id,data,prova,tempo,tempo_segundos,piscina,categoria,evento,obs,periodo) VALUES (?,?,?,?,?,?,?,?,?,?)",
             (d["atleta_id"], d["data"], d["prova"], d.get("tempo"), ts(d.get("tempo")),
-             d.get("piscina"), d.get("categoria"), d.get("evento"), d.get("obs")))
+             d.get("piscina"), d.get("categoria"), d.get("evento"), d.get("obs"), d.get("periodo")))
         nid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         return jsonify(dict(conn.execute("SELECT * FROM resultados WHERE id=?", (nid,)).fetchone())), 201
 
@@ -382,9 +383,9 @@ def upd_resultado(rid):
     d = request.json
     with get_db() as conn:
         conn.execute(
-            "UPDATE resultados SET data=?,prova=?,tempo=?,tempo_segundos=?,piscina=?,categoria=?,evento=?,obs=? WHERE id=?",
+            "UPDATE resultados SET data=?,prova=?,tempo=?,tempo_segundos=?,piscina=?,categoria=?,evento=?,obs=?,periodo=? WHERE id=?",
             (d["data"], d["prova"], d.get("tempo"), ts(d.get("tempo")),
-             d.get("piscina"), d.get("categoria"), d.get("evento"), d.get("obs"), rid))
+             d.get("piscina"), d.get("categoria"), d.get("evento"), d.get("obs"), d.get("periodo"), rid))
         return jsonify(dict(conn.execute("SELECT * FROM resultados WHERE id=?", (rid,)).fetchone()))
 
 @app.route("/api/resultados/<int:rid>", methods=["DELETE"])
@@ -406,14 +407,463 @@ def upd_indice(iid):
             (d.get("tempo"), ts(d.get("tempo")), iid))
         return jsonify(dict(conn.execute("SELECT * FROM indices WHERE id=?", (iid,)).fetchone()))
 
+# ── Competições ─────────────────────────────────────────────────────────────
+def init_competicoes():
+    with get_db() as conn:
+        conn.executescript("""
+        CREATE TABLE IF NOT EXISTS competicoes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome TEXT NOT NULL,
+            local TEXT,
+            data_inicio TEXT NOT NULL,
+            data_fim TEXT,
+            categoria TEXT,
+            piscina INTEGER DEFAULT 25,
+            status TEXT DEFAULT 'planejado',
+            obs TEXT,
+            criado_em TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS competicao_atletas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            competicao_id INTEGER NOT NULL,
+            atleta_id INTEGER NOT NULL,
+            FOREIGN KEY (competicao_id) REFERENCES competicoes(id),
+            FOREIGN KEY (atleta_id) REFERENCES atletas(id)
+        );
+        CREATE TABLE IF NOT EXISTS competicao_provas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            competicao_id INTEGER NOT NULL,
+            atleta_id INTEGER NOT NULL,
+            prova TEXT NOT NULL,
+            horario TEXT,
+            status TEXT DEFAULT 'a_definir',
+            obs TEXT,
+            -- campos de balizamento
+            num_prova INTEGER,
+            etapa TEXT,
+            serie INTEGER,
+            raia INTEGER,
+            tempo_inscricao TEXT,
+            tempo_final TEXT,
+            colocacao TEXT,
+            FOREIGN KEY (competicao_id) REFERENCES competicoes(id),
+            FOREIGN KEY (atleta_id) REFERENCES atletas(id)
+        );
+        CREATE TABLE IF NOT EXISTS nutricao_plano (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            titulo TEXT NOT NULL,
+            tipo TEXT DEFAULT 'base',
+            atleta_id INTEGER,
+            momento TEXT,
+            descricao TEXT,
+            competicao_id INTEGER,
+            criado_em TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS nutricao_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            plano_id INTEGER NOT NULL,
+            horario TEXT,
+            item TEXT NOT NULL,
+            quantidade TEXT,
+            obs TEXT,
+            FOREIGN KEY (plano_id) REFERENCES nutricao_plano(id)
+        );
+        """)
+    # Migração: adicionar colunas de balizamento se banco já existia
+    with get_db() as conn:
+        # Migrar competicoes
+        cols_c = [r[1] for r in conn.execute("PRAGMA table_info(competicoes)").fetchall()]
+        if "piscina" not in cols_c:
+            conn.execute("ALTER TABLE competicoes ADD COLUMN piscina INTEGER DEFAULT 25")
+        # Migrar competicao_provas
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(competicao_provas)").fetchall()]
+        for col, typ in [("num_prova","INTEGER"),("etapa","TEXT"),("serie","INTEGER"),
+                         ("raia","INTEGER"),("tempo_inscricao","TEXT"),
+                         ("tempo_final","TEXT"),("colocacao","TEXT"),("horario_prova","TEXT"),
+                         ("data_prova","TEXT")]:
+            if col not in cols:
+                conn.execute(f"ALTER TABLE competicao_provas ADD COLUMN {col} {typ}")
+
+        # Migração: coluna 'periodo' em resultados (Manhã/Tarde/Noite)
+        cols_r = [r[1] for r in conn.execute("PRAGMA table_info(resultados)").fetchall()]
+        if "periodo" not in cols_r:
+            conn.execute("ALTER TABLE resultados ADD COLUMN periodo TEXT")
+        # Auto-extrai período da coluna 'obs' para registros que ainda não tenham 'periodo'
+        # (mantém o texto original em obs — política "copiar, não mover")
+        import re as _re
+        registros = conn.execute(
+            "SELECT id, obs FROM resultados WHERE (periodo IS NULL OR periodo='') AND obs IS NOT NULL AND obs != ''"
+        ).fetchall()
+        for r in registros:
+            obs_lower = (r["obs"] or "").lower()
+            periodo = None
+            # ordem importa: 'noite' antes de 'tarde' (não há colisão, mas explicito)
+            if _re.search(r"\bmanh[ãa]\b", obs_lower):
+                periodo = "Manhã"
+            elif _re.search(r"\btarde\b", obs_lower):
+                periodo = "Tarde"
+            elif _re.search(r"\bnoite\b", obs_lower):
+                periodo = "Noite"
+            if periodo:
+                conn.execute("UPDATE resultados SET periodo=? WHERE id=?", (periodo, r["id"]))
+
+def seed_competicoes():
+    """Insere o 3º Torneio Regional FAP e provas da Maitê se ainda não existirem."""
+    with get_db() as conn:
+        existe = conn.execute(
+            "SELECT id FROM competicoes WHERE nome LIKE '%3%Torneio Regional FAP%'").fetchone()
+        if existe:
+            return
+        conn.execute(
+            "INSERT INTO competicoes (nome,local,data_inicio,data_fim,categoria,status,obs) VALUES (?,?,?,?,?,?,?)",
+            ("3º Torneio Regional FAP - 6ª Região",
+             "Itaguara Country Clube - Guaratinguetá",
+             "2026-04-25", "2026-04-25",
+             "Infantil", "confirmado",
+             "Piscina 25m, 8 raias. Balizamento FAP."))
+        cid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        aid = 1  # Maitê = atleta_id 1
+        conn.execute("INSERT OR IGNORE INTO competicao_atletas (competicao_id,atleta_id) VALUES (?,?)", (cid, aid))
+        provas = [
+            ("Medley 400m", "1ª Etapa", 1,  1, 7, ""),
+            ("Livre 50m",   "1ª Etapa", 17, 10, 7, "00:33.92"),
+            ("Costas 50m",  "2ª Etapa", 23, 2,  6, "00:40.65"),
+            ("Costas 200m", "2ª Etapa", 31, 3,  1, "02:59.10"),
+        ]
+        for prova, etapa, num, serie, raia, t_insc in provas:
+            conn.execute(
+                """INSERT INTO competicao_provas
+                   (competicao_id,atleta_id,prova,etapa,num_prova,serie,raia,tempo_inscricao,status)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                (cid, aid, prova, etapa, num, serie, raia, t_insc, "confirmada"))
+
+@app.route("/api/competicoes")
+def get_competicoes():
+    with get_db() as conn:
+        rows = conn.execute("SELECT * FROM competicoes ORDER BY data_inicio ASC").fetchall()
+        result = []
+        for r in rows:
+            c = dict(r)
+            atletas_ids = [x[0] for x in conn.execute(
+                "SELECT atleta_id FROM competicao_atletas WHERE competicao_id=?", (c["id"],)).fetchall()]
+            c["atletas"] = atletas_ids
+            result.append(c)
+        return jsonify(result)
+
+@app.route("/api/competicoes", methods=["POST"])
+def add_competicao():
+    d = request.json
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO competicoes (nome,local,data_inicio,data_fim,categoria,piscina,status,obs) VALUES (?,?,?,?,?,?,?,?)",
+            (d["nome"], d.get("local",""), d["data_inicio"], d.get("data_fim",""),
+             d.get("categoria",""), d.get("piscina",25), d.get("status","planejado"), d.get("obs","")))
+        nid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        for aid in d.get("atletas", []):
+            conn.execute("INSERT INTO competicao_atletas (competicao_id,atleta_id) VALUES (?,?)", (nid, aid))
+        row = conn.execute("SELECT * FROM competicoes WHERE id=?", (nid,)).fetchone()
+        return jsonify(dict(row)), 201
+
+@app.route("/api/competicoes/<int:cid>", methods=["PUT"])
+def upd_competicao(cid):
+    d = request.json
+    with get_db() as conn:
+        conn.execute(
+            "UPDATE competicoes SET nome=?,local=?,data_inicio=?,data_fim=?,categoria=?,piscina=?,status=?,obs=? WHERE id=?",
+            (d["nome"], d.get("local",""), d["data_inicio"], d.get("data_fim",""),
+             d.get("categoria",""), d.get("piscina",25), d.get("status","planejado"), d.get("obs",""), cid))
+        conn.execute("DELETE FROM competicao_atletas WHERE competicao_id=?", (cid,))
+        for aid in d.get("atletas", []):
+            conn.execute("INSERT INTO competicao_atletas (competicao_id,atleta_id) VALUES (?,?)", (cid, aid))
+        return jsonify(dict(conn.execute("SELECT * FROM competicoes WHERE id=?", (cid,)).fetchone()))
+
+@app.route("/api/competicoes/<int:cid>", methods=["DELETE"])
+def del_competicao(cid):
+    with get_db() as conn:
+        conn.execute("DELETE FROM competicao_atletas WHERE competicao_id=?", (cid,))
+        conn.execute("DELETE FROM competicao_provas WHERE competicao_id=?", (cid,))
+        conn.execute("DELETE FROM competicoes WHERE id=?", (cid,))
+        return jsonify({"ok": True})
+
+@app.route("/api/competicoes/<int:cid>/provas")
+def get_provas_comp(cid):
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM competicao_provas WHERE competicao_id=? ORDER BY data_prova ASC, horario ASC, atleta_id ASC", (cid,)).fetchall()
+        return jsonify([dict(r) for r in rows])
+
+@app.route("/api/competicoes/<int:cid>/provas", methods=["POST"])
+def add_prova_comp(cid):
+    d = request.json
+    with get_db() as conn:
+        conn.execute(
+            """INSERT INTO competicao_provas
+               (competicao_id,atleta_id,prova,horario,status,obs,
+                num_prova,etapa,serie,raia,tempo_inscricao,tempo_final,colocacao,horario_prova,data_prova)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (cid, d["atleta_id"], d["prova"], d.get("horario",""), d.get("status","a_definir"), d.get("obs",""),
+             d.get("num_prova"), d.get("etapa",""), d.get("serie"), d.get("raia"),
+             d.get("tempo_inscricao",""), d.get("tempo_final",""), d.get("colocacao",""),
+             d.get("horario_prova",""), d.get("data_prova","")))
+        nid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        return jsonify(dict(conn.execute("SELECT * FROM competicao_provas WHERE id=?", (nid,)).fetchone())), 201
+
+@app.route("/api/provas/<int:pid>", methods=["PUT"])
+def upd_prova(pid):
+    d = request.json
+    with get_db() as conn:
+        conn.execute(
+            """UPDATE competicao_provas SET
+               prova=?,horario=?,horario_prova=?,status=?,obs=?,
+               num_prova=?,etapa=?,serie=?,raia=?,
+               tempo_inscricao=?,tempo_final=?,colocacao=?,data_prova=?
+               WHERE id=?""",
+            (d["prova"], d.get("horario",""), d.get("horario_prova", d.get("horario","")),
+             d.get("status","a_definir"), d.get("obs",""),
+             d.get("num_prova"), d.get("etapa",""), d.get("serie"), d.get("raia"),
+             d.get("tempo_inscricao",""), d.get("tempo_final",""), d.get("colocacao",""),
+             d.get("data_prova",""), pid))
+        return jsonify(dict(conn.execute("SELECT * FROM competicao_provas WHERE id=?", (pid,)).fetchone()))
+
+@app.route("/api/provas/<int:pid>", methods=["DELETE"])
+def del_prova(pid):
+    with get_db() as conn:
+        conn.execute("DELETE FROM competicao_provas WHERE id=?", (pid,))
+        return jsonify({"ok": True})
+
+@app.route("/api/nutricao")
+def get_nutricao():
+    with get_db() as conn:
+        planos = conn.execute("SELECT * FROM nutricao_plano ORDER BY tipo, momento").fetchall()
+        result = []
+        for p in planos:
+            pl = dict(p)
+            pl["items"] = [dict(i) for i in conn.execute(
+                "SELECT * FROM nutricao_items WHERE plano_id=? ORDER BY horario", (pl["id"],)).fetchall()]
+            result.append(pl)
+        return jsonify(result)
+
+@app.route("/api/nutricao", methods=["POST"])
+def add_nutricao():
+    d = request.json
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO nutricao_plano (titulo,tipo,atleta_id,momento,descricao,competicao_id) VALUES (?,?,?,?,?,?)",
+            (d["titulo"], d.get("tipo","base"), d.get("atleta_id"), d.get("momento",""),
+             d.get("descricao",""), d.get("competicao_id")))
+        nid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        for item in d.get("items", []):
+            conn.execute(
+                "INSERT INTO nutricao_items (plano_id,horario,item,quantidade,obs) VALUES (?,?,?,?,?)",
+                (nid, item.get("horario",""), item["item"], item.get("quantidade",""), item.get("obs","")))
+        return jsonify({"id": nid}), 201
+
+@app.route("/api/nutricao/<int:pid>", methods=["DELETE"])
+def del_nutricao(pid):
+    with get_db() as conn:
+        conn.execute("DELETE FROM nutricao_items WHERE plano_id=?", (pid,))
+        conn.execute("DELETE FROM nutricao_plano WHERE id=?", (pid,))
+        return jsonify({"ok": True})
+
+
+# ── Importação de PDF de torneio ────────────────────────────────────────────
+# Estratégia: extrai texto com pdfplumber, depois aplica regex tolerante
+# para detectar prova/horário/etapa/série/raia/tempo de inscrição.
+# NÃO salva nada — devolve preview JSON pra você revisar antes de confirmar.
+
+# Estilos de prova reconhecidos no PDF (com variações comuns de grafia)
+_ESTILOS_PDF = [
+    (r"livre",     "Livre"),
+    (r"costas",    "Costas"),
+    (r"peito",     "Peito"),
+    (r"borboleta", "Borboleta"),
+    (r"medley",    "Medley"),
+]
+
+def _normalizar_prova(texto):
+    """'50m livre', '50 m LIVRE', 'Livre 50', '50M LIVRES' → 'Livre 50m'. None se não bater."""
+    if not texto:
+        return None
+    t = texto.lower().strip()
+    # acha distância (ex: 50, 100, 200, 400, 800, 1500)
+    m_dist = re.search(r"\b(50|100|200|400|800|1500)\s*m?\b", t)
+    if not m_dist:
+        return None
+    dist = m_dist.group(1)
+    # acha estilo
+    estilo = None
+    for pat, nome in _ESTILOS_PDF:
+        if re.search(pat, t):
+            estilo = nome
+            break
+    if not estilo:
+        return None
+    return f"{estilo} {dist}m"
+
+def _normalizar_horario(texto):
+    """'14:30', '14h30', '02:45 PM' → 'HH:MM'. None se não bater.
+    Aceita só faixa razoável de horário de prova: 05:00–23:59."""
+    if not texto:
+        return None
+    # Procura padrão e exclui se vier seguido de ponto/vírgula+dígitos (= tempo de inscrição)
+    for m in re.finditer(r"\b([01]?\d|2[0-3])\s*[:hH]\s*([0-5]\d)\b", texto):
+        h = int(m.group(1))
+        # Sufixo logo depois? Provavelmente é tempo (00:33.92)
+        suf = texto[m.end():m.end()+4]
+        if re.match(r"[.,]\d{2}", suf):
+            continue
+        # Faixa de horário de prova
+        if 5 <= h <= 23:
+            return f"{h:02d}:{m.group(2)}"
+    return None
+
+def _normalizar_tempo_inscricao(texto):
+    """'01:17.78', '1:17,78', '00:33.92' → 'MM:SS.cc'. None se não bater."""
+    if not texto:
+        return None
+    m = re.search(r"\b(\d{1,2})[:.,](\d{2})[.,](\d{2})\b", texto)
+    if m:
+        return f"{int(m.group(1)):02d}:{m.group(2)}.{m.group(3)}"
+    return None
+
+def parse_pdf_torneio(pdf_bytes):
+    """Recebe bytes do PDF, devolve lista de dicts (uma linha = uma prova).
+    Cada dict: {linha_pdf, prova, horario_prova, etapa, num_prova, serie, raia, tempo_inscricao, atleta_id (sempre None)}.
+
+    Heurística tolerante:
+    - Mantém estado de etapa atual (linhas tipo "1ª Etapa" pegam o restante).
+    - Para cada linha que parece linha-de-prova (tem estilo+distância), captura
+      número/série/raia/horário/etapa da própria linha.
+    - Olha até 2 linhas seguintes procurando o tempo de inscrição (formato MM:SS.cc),
+      que normalmente vem na linha do nome do atleta.
+    """
+    try:
+        import pdfplumber
+    except ImportError:
+        return {"erro": "pdfplumber não instalado. Adicione 'pdfplumber' ao requirements.txt."}
+
+    import io
+    resultados = []
+    try:
+        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+            todas_linhas = []
+            for pagina in pdf.pages:
+                texto = pagina.extract_text() or ""
+                for linha in texto.split("\n"):
+                    s = linha.strip()
+                    if s:
+                        todas_linhas.append(s)
+
+            etapa_atual = ""
+            for i, linha_strip in enumerate(todas_linhas):
+                # Marcador de etapa solto
+                m_etapa = re.fullmatch(r"\s*(\d)\s*[ªa°]?\s*etapa\s*", linha_strip, re.IGNORECASE)
+                if m_etapa:
+                    etapa_atual = f"{m_etapa.group(1)}ª Etapa"
+                    continue
+
+                prova = _normalizar_prova(linha_strip)
+                if not prova:
+                    continue
+
+                horario = _normalizar_horario(linha_strip)
+
+                # Tempo de inscrição: tenta na linha atual e nas próximas 2
+                tempo_insc = _normalizar_tempo_inscricao(linha_strip)
+                linha_atleta_pdf = ""
+                if not tempo_insc:
+                    for j in range(1, 3):
+                        if i + j < len(todas_linhas):
+                            t = _normalizar_tempo_inscricao(todas_linhas[i + j])
+                            if t:
+                                tempo_insc = t
+                                linha_atleta_pdf = todas_linhas[i + j]
+                                break
+
+                # nº prova
+                num_prova = None
+                m_np = re.search(r"prova\s*(\d{1,3})", linha_strip, re.IGNORECASE)
+                if m_np:
+                    num_prova = int(m_np.group(1))
+                else:
+                    m_np = re.match(r"^\s*(\d{1,3})\s*[\-–—]", linha_strip)
+                    if m_np:
+                        num_prova = int(m_np.group(1))
+
+                # série / raia
+                serie = None
+                raia = None
+                m_sr = re.search(r"s[ée]rie\s*(\d{1,2})", linha_strip, re.IGNORECASE)
+                if m_sr: serie = int(m_sr.group(1))
+                m_r = re.search(r"raia\s*([1-8])", linha_strip, re.IGNORECASE)
+                if m_r: raia = int(m_r.group(1))
+
+                # etapa na própria linha sobrescreve a atual
+                m_e = re.search(r"(\d)\s*[ªa°]?\s*etapa", linha_strip, re.IGNORECASE)
+                etapa = f"{m_e.group(1)}ª Etapa" if m_e else etapa_atual
+
+                resultados.append({
+                    "linha_pdf": (linha_strip + (" | " + linha_atleta_pdf if linha_atleta_pdf else ""))[:200],
+                    "prova": prova,
+                    "horario_prova": horario or "",
+                    "etapa": etapa,
+                    "num_prova": num_prova,
+                    "serie": serie,
+                    "raia": raia,
+                    "tempo_inscricao": tempo_insc or "",
+                    "atleta_id": None,
+                })
+    except Exception as e:
+        return {"erro": f"Falha ao ler PDF: {type(e).__name__}: {e}"}
+
+    return {"provas": resultados}
+
+
+@app.route("/api/competicoes/<int:cid>/importar-pdf", methods=["POST"])
+def importar_pdf_competicao(cid):
+    """Recebe um PDF, devolve preview JSON. NÃO salva nada — só extrai."""
+    if "arquivo" not in request.files:
+        return jsonify({"erro": "Envie o PDF no campo 'arquivo' (multipart/form-data)."}), 400
+    f = request.files["arquivo"]
+    if not f.filename.lower().endswith(".pdf"):
+        return jsonify({"erro": "Arquivo precisa ser .pdf"}), 400
+    pdf_bytes = f.read()
+    if len(pdf_bytes) > 10 * 1024 * 1024:  # 10 MB
+        return jsonify({"erro": "PDF maior que 10 MB."}), 413
+
+    resultado = parse_pdf_torneio(pdf_bytes)
+    if "erro" in resultado:
+        return jsonify(resultado), 422
+
+    # Verifica que a competição existe (não modifica nada)
+    with get_db() as conn:
+        comp = conn.execute("SELECT id, nome FROM competicoes WHERE id=?", (cid,)).fetchone()
+        if not comp:
+            return jsonify({"erro": "Competição não encontrada."}), 404
+        atletas = [dict(r) for r in conn.execute(
+            "SELECT a.id, a.nome FROM atletas a "
+            "JOIN competicao_atletas ca ON ca.atleta_id=a.id "
+            "WHERE ca.competicao_id=? ORDER BY a.id", (cid,)).fetchall()]
+
+    return jsonify({
+        "competicao": {"id": comp["id"], "nome": comp["nome"]},
+        "atletas_competicao": atletas,
+        "total_provas_extraidas": len(resultado["provas"]),
+        "provas": resultado["provas"],
+    })
+
+
+# ── Inicialização ───────────────────────────────────────────────────────────
+# Roda tanto via `python app.py` quanto via gunicorn (Railway).
+# Ordem: init_db (cria data/ + tabelas base) → seed_data → init_competicoes → seed_competicoes.
+# Tudo idempotente: CREATE TABLE IF NOT EXISTS + checagens de "já populado".
+init_db()
+seed_data()
+init_competicoes()
+seed_competicoes()
+
 if __name__ == "__main__":
-    init_db()
-    seed_data()
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("RAILWAY_ENVIRONMENT") is None
     print(f"\n🏊  Natacao Dashboard em http://localhost:{port}\n")
     app.run(debug=debug, host="0.0.0.0", port=port)
-
-# Para gunicorn (Railway)
-init_db()
-seed_data()
