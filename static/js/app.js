@@ -653,6 +653,7 @@ function restoreModal() {
     <div class="field"><label>Tempo</label><input type="text" id="e-tempo" class="glass-input" placeholder="01:23.45"></div>
     <div class="field"><label>Piscina</label><select id="e-pisc" class="glass-select"><option value="25">25m</option><option value="50">50m</option></select></div>
     <div class="field"><label>Categoria</label><select id="e-cat" class="glass-select"><option value="">—</option><option value="P1">P1</option><option value="P2">P2</option><option value="INF">INF</option></select></div>
+    <div class="field"><label>Período</label><select id="e-periodo" class="glass-select"><option value="">—</option><option value="Manhã">☀ Manhã</option><option value="Tarde">⛅ Tarde</option><option value="Noite">🌙 Noite</option></select></div>
     <div class="field full"><label>Evento</label><input type="text" id="e-evento" class="glass-input"></div>
     <div class="field full"><label>Obs</label><input type="text" id="e-obs" class="glass-input"></div>
   `;
