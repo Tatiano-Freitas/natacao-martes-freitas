@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Natação · Monitoramento</title>
-<link rel="stylesheet" href="/static/css/style.css?v=9">
+<link rel="stylesheet" href="/static/css/style.css?v=11">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="/static/favicon.png">
 <link rel="manifest" href="/static/manifest.json">
@@ -44,7 +44,7 @@
           </div>
           <div class="table-scroll">
             <table>
-              <thead><tr><th>Data</th><th>Prova</th><th>Tempo</th><th>Cat</th><th>Pisc</th><th>Evento</th><th>Obs</th><th></th></tr></thead>
+              <thead><tr><th>Data</th><th>Prova</th><th>Tempo</th><th>Cat</th><th>Pisc</th><th>Período</th><th>Evento</th><th>Obs</th><th></th></tr></thead>
               <tbody id="hist-body"></tbody>
             </table>
           </div>
@@ -64,6 +64,13 @@
       <div class="page-title">Compa-<br><span>rativo</span></div>
       <div class="glass-card">
         <div class="glass-card-inner">
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+            <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-right:4px">Filtrar por período:</span>
+            <button class="prova-tag active" data-cmp-periodo="" onclick="setCmpPeriodo('')">Todos</button>
+            <button class="prova-tag" data-cmp-periodo="Manhã" onclick="setCmpPeriodo('Manhã')">☀ Manhã</button>
+            <button class="prova-tag" data-cmp-periodo="Tarde" onclick="setCmpPeriodo('Tarde')">⛅ Tarde</button>
+            <button class="prova-tag" data-cmp-periodo="Noite" onclick="setCmpPeriodo('Noite')">🌙 Noite</button>
+          </div>
           <div class="table-scroll">
             <table>
               <thead><tr><th>Prova</th><th id="cmp-h1" style="color:#5AC8FA">—</th><th id="cmp-h2" style="color:#BDB2FF">—</th><th>Δ (s)</th></tr></thead>
@@ -97,8 +104,9 @@
               <div class="field"><label>Tempo <span class="hint">MM:SS.cc</span></label><input type="text" id="f-tempo" class="glass-input" placeholder="01:23.45"></div>
               <div class="field"><label>Piscina</label><select id="f-pisc" class="glass-select"><option value="25">25 metros</option><option value="50">50 metros</option></select></div>
               <div class="field"><label>Categoria</label><select id="f-cat" class="glass-select"><option value="">—</option><option value="P1">P1 — Petiz 1</option><option value="P2">P2 — Petiz 2</option><option value="INF">INF — Infantil</option></select></div>
+              <div class="field"><label>Período</label><select id="f-periodo" class="glass-select"><option value="">—</option><option value="Manhã">☀ Manhã</option><option value="Tarde">⛅ Tarde</option><option value="Noite">🌙 Noite</option></select></div>
               <div class="field full"><label>Evento / Competição</label><input type="text" id="f-evento" class="glass-input" placeholder="AESJ, Sudeste, Campeonato Paulista…"></div>
-              <div class="field full"><label>Obs / Colocação</label><input type="text" id="f-obs" class="glass-input" placeholder="3° lugar, manhã, desclassificada…"></div>
+              <div class="field full"><label>Obs / Colocação</label><input type="text" id="f-obs" class="glass-input" placeholder="3° lugar, desclassificada…"></div>
             </div>
             <div class="form-actions">
               <button type="submit" class="btn-glass btn-primary" id="submit-btn">Salvar resultado</button>
@@ -196,6 +204,108 @@
       </div>
     </section>
 
+
+    <!-- COMPETIÇÕES -->
+    <section class="section" id="s-competicoes">
+      <div class="page-title">Compe-<br><span>tições</span></div>
+
+      <!-- Controles do calendário -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="btn-glass" onclick="mesAnterior()" style="padding:8px 14px;font-size:16px">‹</button>
+          <span id="cal-titulo" style="font-size:17px;font-weight:600;min-width:160px;text-align:center"></span>
+          <button class="btn-glass" onclick="proximoMes()" style="padding:8px 14px;font-size:16px">›</button>
+        </div>
+        <button class="btn-glass btn-primary" onclick="abrirModalComp()">+ Adicionar competição</button>
+      </div>
+
+      <!-- Calendário -->
+      <div class="glass-card" style="margin-bottom:16px">
+        <div class="glass-card-inner" style="padding:16px">
+          <div id="cal-grid"></div>
+        </div>
+      </div>
+
+      <!-- Lista de competições do mês -->
+      <div class="section-label" id="cal-lista-label">Competições</div>
+      <div id="cal-lista"></div>
+    </section>
+
+    <!-- NUTRIÇÃO -->
+    <section class="section" id="s-nutricao">
+      <div class="page-title">Nutri-<br><span>ção</span></div>
+
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="ptag act" onclick="selNutTab('base',this)">Plano Base</button>
+        <button class="ptag" onclick="selNutTab('competicao',this)">Por Competição</button>
+      </div>
+
+      <div id="nut-base-section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <div class="section-label" style="margin:0">Planos cadastrados</div>
+          <button class="btn-glass btn-primary" onclick="abrirModalNut()">+ Novo plano</button>
+        </div>
+        <div id="nut-lista"></div>
+      </div>
+
+      <div id="nut-comp-section" style="display:none">
+        <div class="glass-card">
+          <div class="glass-card-inner">
+            <p style="color:var(--text3);font-size:13px">Selecione uma competição para ver o plano nutricional específico.</p>
+            <div style="margin-top:12px">
+              <select id="nut-comp-select" class="glass-select" onchange="loadNutComp(this.value)" style="max-width:320px">
+                <option value="">— Selecione uma competição —</option>
+              </select>
+            </div>
+            <div id="nut-comp-lista" style="margin-top:16px"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DIA DA PROVA -->
+    <section class="section" id="s-dia-da-prova">
+      <div class="page-title">Dia<br><span>da Prova</span></div>
+
+      <div class="glass-card" style="margin-bottom:16px">
+        <div class="glass-card-inner">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="field" style="margin:0">
+              <label>Competição</label>
+              <select id="ddp-comp" class="glass-select" onchange="renderDiaDaProva()">
+                <option value="">— Selecione —</option>
+              </select>
+            </div>
+            <div class="field" style="margin:0">
+              <label>Atleta</label>
+              <select id="ddp-atleta" class="glass-select" onchange="renderDiaDaProva()">
+                <option value="">— Selecione —</option>
+              </select>
+            </div>
+          </div>
+          <div class="field" style="margin-top:10px">
+            <label>Data (deixe em branco para todos os dias da competição)</label>
+            <select id="ddp-dia" class="glass-select" onchange="renderDiaDaProva()">
+              <option value="">— Todos os dias —</option>
+            </select>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-glass" id="ddp-btn-print" onclick="imprimirDiaDaProva()" style="display:none">🖨️ Imprimir</button>
+            <button class="btn-glass" id="ddp-btn-add-nut" onclick="abrirModalNutSlot()" style="display:none">＋ Adicionar slot de nutrição</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="ddp-timeline-container">
+        <div class="glass-card">
+          <div class="glass-card-inner" style="text-align:center;padding:40px 20px">
+            <div style="font-size:48px;margin-bottom:8px">🗓️</div>
+            <div style="color:var(--text3);font-size:14px">Selecione uma competição e um atleta acima para gerar a linha do tempo do dia.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- Sidebar navigation -->
@@ -246,6 +356,18 @@
         <div class="nav-item-icon">🎯</div>
         <span class="nav-item-label">Índices</span>
       </button>
+      <button class="nav-item" data-section="competicoes">
+        <div class="nav-item-icon">🏆</div>
+        <span class="nav-item-label">Competições</span>
+      </button>
+      <button class="nav-item" data-section="nutricao">
+        <div class="nav-item-icon">🥗</div>
+        <span class="nav-item-label">Nutrição</span>
+      </button>
+      <button class="nav-item" data-section="dia-da-prova">
+        <div class="nav-item-icon">🗓️</div>
+        <span class="nav-item-label">Dia da Prova</span>
+      </button>
       <button class="nav-item nav-item-add" data-section="adicionar">
         <div class="nav-item-icon">＋</div>
         <span class="nav-item-label">Adicionar</span>
@@ -261,6 +383,266 @@
   </nav>
 </div>
 
+<!-- Modal Competição -->
+<div class="modal-overlay" id="modal-comp" onclick="closeModalComp(event)">
+  <div class="modal" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-comp-title">Nova competição</div>
+    <div class="form-grid">
+      <div class="field full"><label>Nome da competição</label><input type="text" id="mc-nome" class="glass-input" placeholder="Ex: Campeonato Paulista Petiz"></div>
+      <div class="field"><label>Data início</label><input type="date" id="mc-data-ini" class="glass-input"></div>
+      <div class="field"><label>Data fim</label><input type="date" id="mc-data-fim" class="glass-input"></div>
+      <div class="field full"><label>Local</label><input type="text" id="mc-local" class="glass-input" placeholder="Ex: AESJ, Centro Olímpico SP"></div>
+      <div class="field"><label>Categoria</label><select id="mc-cat" class="glass-select"><option value="">— Todas —</option><option>Petiz I</option><option>Petiz II</option><option>Infantil I</option><option>Infantil II</option><option>Juvenil I</option><option>Juvenil II</option><option>Aberto</option></select></div>
+      <div class="field"><label>Status</label><select id="mc-status" class="glass-select"><option value="planejado">Planejado</option><option value="confirmado">Confirmado</option><option value="realizado">Realizado</option><option value="cancelado">Cancelado</option></select></div>
+      <div class="field"><label>Piscina</label><select id="mc-piscina" class="glass-select"><option value="25">25 metros</option><option value="50">50 metros</option></select></div>
+      <div class="field full"><label>Atletas participantes</label><div id="mc-atletas" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px"></div></div>
+      <div class="field full"><label>Observações</label><input type="text" id="mc-obs" class="glass-input" placeholder="Informações adicionais..."></div>
+    </div>
+
+    <!-- Provas com horário -->
+    <div id="mc-provas-section" style="display:none;margin-top:16px">
+      <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px;display:flex;align-items:center;gap:8px">
+        🏊 Provas da competição
+        <span style="font-size:11px;color:var(--text3);font-weight:400">clique em ⇄ para confirmar</span>
+      </div>
+      <div class="glass-card" style="margin-bottom:0">
+        <div class="glass-card-inner" style="padding:8px 12px">
+          <div style="display:grid;grid-template-columns:52px 1fr auto auto auto;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:4px">
+            <span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Horário</span>
+            <span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Prova</span>
+            <span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Atleta</span>
+            <span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Status</span>
+            <span></span>
+          </div>
+          <div id="mc-provas-lista"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn-glass btn-primary" onclick="salvarComp()">Salvar</button>
+      <button class="btn-glass" onclick="closeModalComp()">Cancelar</button>
+      <button class="btn-glass btn-danger" id="mc-del-btn" style="display:none" onclick="deletarComp()">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Detalhe Competição + Provas -->
+<div class="modal-overlay" id="modal-comp-det" onclick="closeModalCompDet(event)">
+  <div class="modal" style="max-width:560px;max-height:92vh;overflow-y:auto">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;gap:8px;flex-wrap:wrap">
+      <div class="modal-title" id="mcd-titulo" style="margin:0"></div>
+      <div style="display:flex;gap:6px">
+        <button class="btn-glass" onclick="abrirModalImportPdf()" style="font-size:12px;padding:5px 10px">📄 Importar PDF</button>
+        <button class="btn-glass" onclick="abrirComp(editingCompId)" style="font-size:12px;padding:5px 10px">✎ Editar</button>
+      </div>
+    </div>
+    <div id="mcd-meta" style="font-size:12px;color:var(--text3);margin-bottom:16px"></div>
+
+    <!-- Provas por atleta -->
+    <div id="mcd-atletas-provas"></div>
+
+    <!-- Adicionar prova -->
+    <div class="glass-card" style="margin-top:14px">
+      <div class="glass-card-inner">
+        <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px">+ Adicionar prova</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;align-items:end">
+          <div class="field" style="margin:0;flex:1;min-width:120px">
+            <label>Atleta</label>
+            <select id="np-atleta" class="glass-select"></select>
+          </div>
+          <div class="field" style="margin:0;flex:2;min-width:140px">
+            <label>Prova</label>
+            <select id="np-prova" class="glass-select">
+              <option>Livre 50m</option><option>Livre 100m</option><option>Livre 200m</option>
+              <option>Livre 400m</option><option>Livre 800m</option>
+              <option>Costas 50m</option><option>Costas 100m</option><option>Costas 200m</option>
+              <option>Peito 50m</option><option>Peito 100m</option><option>Peito 200m</option>
+              <option>Borboleta 50m</option><option>Borboleta 100m</option><option>Borboleta 200m</option>
+              <option>Medley 100m</option><option>Medley 200m</option><option>Medley 400m</option>
+            </select>
+          </div>
+          <div class="field" style="margin:0;width:130px">
+            <label>Data</label>
+            <select id="np-data" class="glass-select" style="height:38px">
+              <option value="">— escolher —</option>
+            </select>
+          </div>
+          <div class="field" style="margin:0;width:90px">
+            <label>Horário</label>
+            <input type="time" id="np-horario" class="glass-input" style="height:38px">
+          </div>
+          <div class="field" style="margin:0;width:110px">
+            <label>Status</label>
+            <select id="np-status" class="glass-select">
+              <option value="a_definir">A definir</option>
+              <option value="confirmada">Confirmada</option>
+            </select>
+          </div>
+          <div class="field" style="margin:0">
+            <label>Etapa</label>
+            <select id="np-etapa" class="glass-select">
+              <option value="">—</option>
+              <option value="1ª Etapa">1ª Etapa</option>
+              <option value="2ª Etapa">2ª Etapa</option>
+            </select>
+          </div>
+          <div class="field" style="margin:0">
+            <label>Nº Prova</label>
+            <input type="number" id="np-num" class="glass-input" placeholder="Ex: 17" min="1">
+          </div>
+          <div class="field" style="margin:0">
+            <label>Série</label>
+            <input type="number" id="np-serie" class="glass-input" placeholder="Ex: 10" min="1">
+          </div>
+          <div class="field" style="margin:0">
+            <label>Raia</label>
+            <input type="number" id="np-raia" class="glass-input" placeholder="Ex: 7" min="1" max="8">
+          </div>
+          <div class="field" style="margin:0">
+            <label>Tempo inscrição</label>
+            <input type="text" id="np-tinsc" class="glass-input" placeholder="00:33.92">
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <button class="btn-glass btn-primary" onclick="adicionarProvaComp()" style="height:38px;padding:0 18px">+ Adicionar prova</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions" style="margin-top:12px">
+      <button class="btn-glass" onclick="closeModalCompDet()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Nutrição -->
+<div class="modal-overlay" id="modal-nut" onclick="closeModalNut(event)">
+  <div class="modal" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Novo plano nutricional</div>
+    <div class="form-grid">
+      <div class="field full"><label>Título do plano</label><input type="text" id="mn-titulo" class="glass-input" placeholder="Ex: Café da manhã pré-prova"></div>
+      <div class="field"><label>Tipo</label><select id="mn-tipo" class="glass-select"><option value="base">Base (temporada)</option><option value="competicao">Por competição</option></select></div>
+      <div class="field"><label>Atleta</label><select id="mn-atleta" class="glass-select"><option value="">Todas</option></select></div>
+      <div class="field full"><label>Momento</label><select id="mn-momento" class="glass-select"><option value="pre">Pré-prova</option><option value="entre">Entre provas</option><option value="pos">Pós-prova</option><option value="manha">Manhã do dia</option><option value="noite_anterior">Noite anterior</option></select></div>
+      <div class="field full"><label>Descrição geral</label><input type="text" id="mn-desc" class="glass-input" placeholder="Observações gerais do plano"></div>
+    </div>
+    <div style="margin-top:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:13px;font-weight:600;color:var(--text2)">Itens do plano</span>
+        <button class="btn-glass" onclick="addItemNut()" style="padding:6px 12px;font-size:12px">+ Item</button>
+      </div>
+      <div id="mn-items"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-glass btn-primary" onclick="salvarNut()">Salvar plano</button>
+      <button class="btn-glass" onclick="closeModalNut()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Importar PDF de torneio -->
+<div class="modal-overlay" id="modal-import-pdf" onclick="closeModalImportPdf(event)">
+  <div class="modal" style="max-width:760px;max-height:92vh;overflow-y:auto">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Importar PDF de torneio</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">
+      Envie a planilha de horários ou balizamento. O sistema extrai prova, horário, série e raia automaticamente — você revisa antes de salvar.
+    </div>
+
+    <!-- Etapa 1: upload -->
+    <div id="mip-step-upload">
+      <div class="glass-card">
+        <div class="glass-card-inner" style="text-align:center;padding:24px">
+          <input type="file" id="mip-file" accept=".pdf" style="display:none" onchange="enviarPdfTorneio()">
+          <button class="btn-glass btn-primary" onclick="document.getElementById('mip-file').click()" style="font-size:14px">📎 Selecionar PDF</button>
+          <div style="margin-top:10px;font-size:12px;color:var(--text3)">Formato: .pdf — máximo 10 MB</div>
+        </div>
+      </div>
+      <div id="mip-status" style="margin-top:12px;font-size:13px;color:var(--text3);text-align:center"></div>
+    </div>
+
+    <!-- Etapa 2: revisão -->
+    <div id="mip-step-revisao" style="display:none">
+      <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px">
+        Revisão das provas extraídas
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px">
+        Marque o atleta de cada linha. Linhas sem atleta serão descartadas.
+      </div>
+      <div id="mip-tabela"></div>
+      <div class="form-actions">
+        <button class="btn-glass btn-primary" onclick="confirmarImportPdf()">Salvar provas selecionadas</button>
+        <button class="btn-glass" onclick="resetImportPdf()">Voltar</button>
+        <button class="btn-glass" onclick="closeModalImportPdf()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Slot de Nutrição (Dia da Prova) -->
+<div class="modal-overlay" id="modal-nut-slot" onclick="closeModalNutSlot(event)">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Slot de nutrição</div>
+    <div class="form-grid">
+      <div class="field"><label>Horário</label><input type="time" id="mns-horario" class="glass-input"></div>
+      <div class="field"><label>Quantidade</label><input type="text" id="mns-qtd" class="glass-input" placeholder="Ex: 1 unidade"></div>
+      <div class="field full"><label>Item</label><input type="text" id="mns-item" class="glass-input" placeholder="Ex: Banana com pasta de amendoim"></div>
+      <div class="field full"><label>Observações</label><input type="text" id="mns-obs" class="glass-input" placeholder="T-30min antes da prova"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-glass btn-primary" onclick="salvarNutSlot()">Salvar</button>
+      <button class="btn-glass" onclick="closeModalNutSlot()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar prova (completo) -->
+<div class="modal-overlay" id="modal-prova-edit" onclick="closeModalProvaEdit(event)">
+  <div class="modal" style="max-width:560px;max-height:92vh;overflow-y:auto">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Editar prova</div>
+    <div class="form-grid">
+      <div class="field full">
+        <label>Prova</label>
+        <select id="mpe-prova" class="glass-select">
+          <option>Livre 50m</option><option>Livre 100m</option><option>Livre 200m</option>
+          <option>Livre 400m</option><option>Livre 800m</option>
+          <option>Costas 50m</option><option>Costas 100m</option><option>Costas 200m</option>
+          <option>Peito 50m</option><option>Peito 100m</option><option>Peito 200m</option>
+          <option>Borboleta 50m</option><option>Borboleta 100m</option><option>Borboleta 200m</option>
+          <option>Medley 100m</option><option>Medley 200m</option><option>Medley 400m</option>
+        </select>
+      </div>
+      <div class="field"><label>Data</label><select id="mpe-data" class="glass-select"><option value="">— escolher —</option></select></div>
+      <div class="field"><label>Horário</label><input type="time" id="mpe-horario" class="glass-input"></div>
+      <div class="field"><label>Etapa</label><select id="mpe-etapa" class="glass-select">
+        <option value="">—</option><option value="1ª Etapa">1ª Etapa</option><option value="2ª Etapa">2ª Etapa</option>
+      </select></div>
+      <div class="field"><label>Status</label><select id="mpe-status" class="glass-select">
+        <option value="a_definir">A definir</option>
+        <option value="confirmada">Confirmada</option>
+        <option value="realizada">Realizada</option>
+      </select></div>
+      <div class="field"><label>Nº prova</label><input type="number" id="mpe-num" class="glass-input" placeholder="Ex: 17" min="1"></div>
+      <div class="field"><label>Série</label><input type="number" id="mpe-serie" class="glass-input" min="1"></div>
+      <div class="field"><label>Raia</label><input type="number" id="mpe-raia" class="glass-input" min="1" max="8"></div>
+      <div class="field"><label>Tempo inscrição</label><input type="text" id="mpe-tinsc" class="glass-input" placeholder="01:17.78"></div>
+      <div class="field"><label>Tempo final</label><input type="text" id="mpe-tfinal" class="glass-input" placeholder="01:15.32"></div>
+      <div class="field"><label>Colocação</label><input type="text" id="mpe-colocacao" class="glass-input" placeholder="3° 🥉"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-glass btn-primary" onclick="salvarProvaEdit()">Salvar</button>
+      <button class="btn-glass" onclick="closeModalProvaEdit()">Cancelar</button>
+      <button class="btn-glass btn-danger" onclick="deletarProvaDoEdit()" style="margin-left:auto">Excluir</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal edição -->
 <div class="modal-overlay" id="modal" onclick="closeModal(event)">
   <div class="modal">
@@ -272,6 +654,7 @@
         <div class="field"><label>Tempo</label><input type="text" id="e-tempo" class="glass-input" placeholder="01:23.45"></div>
         <div class="field"><label>Piscina</label><select id="e-pisc" class="glass-select"><option value="25">25m</option><option value="50">50m</option></select></div>
         <div class="field"><label>Categoria</label><select id="e-cat" class="glass-select"><option value="">—</option><option value="P1">P1</option><option value="P2">P2</option><option value="INF">INF</option></select></div>
+        <div class="field"><label>Período</label><select id="e-periodo" class="glass-select"><option value="">—</option><option value="Manhã">☀ Manhã</option><option value="Tarde">⛅ Tarde</option><option value="Noite">🌙 Noite</option></select></div>
         <div class="field full"><label>Evento</label><input type="text" id="e-evento" class="glass-input"></div>
         <div class="field full"><label>Obs</label><input type="text" id="e-obs" class="glass-input"></div>
       </div>
@@ -284,6 +667,131 @@
 </div>
 <div class="toast" id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="/static/js/app.js?v=9"></script>
+<script src="/static/js/app.js?v=99"></script>
+
+<script>
+/* ── Patch: balizamento ── */
+// Sobrescreve adicionarProvaComp para incluir campos de balizamento
+async function adicionarProvaComp() {
+  if (!editingCompId) return;
+  const atleta_id = parseInt(document.getElementById('np-atleta').value);
+  const prova     = document.getElementById('np-prova').value;
+  const horario   = document.getElementById('np-horario').value;
+  const status    = document.getElementById('np-status').value;
+  const etapa     = document.getElementById('np-etapa')?.value || '';
+  const num_prova = parseInt(document.getElementById('np-num')?.value) || null;
+  const serie     = parseInt(document.getElementById('np-serie')?.value) || null;
+  const raia      = parseInt(document.getElementById('np-raia')?.value) || null;
+  const tempo_inscricao = document.getElementById('np-tinsc')?.value || '';
+
+  if (!atleta_id || !prova) return;
+
+  const r = await fetch(`/api/competicoes/${editingCompId}/provas`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({atleta_id, prova, horario, status,
+                          etapa, num_prova, serie, raia, tempo_inscricao})
+  });
+  if (r.ok) {
+    // Limpar campos de balizamento
+    ['np-num','np-serie','np-raia','np-tinsc'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    const etapaEl = document.getElementById('np-etapa');
+    if (etapaEl) etapaEl.value = '';
+    await loadProvasComp(editingCompId);
+    showToast('Prova adicionada!');
+  }
+}
+
+// Sobrescreve renderProvasComp para exibir dados de balizamento
+function renderProvasComp(provas, atletas) {
+  const el = document.getElementById('mcd-atletas-provas');
+  if (!el) return;
+  if (!provas.length) {
+    el.innerHTML = '<p style="color:var(--text3);font-size:13px;margin:0">Nenhuma prova cadastrada.</p>';
+    return;
+  }
+
+  // Agrupar por atleta
+  const grupos = {};
+  provas.forEach(p => {
+    const nome = atletas.find(a => a.id === p.atleta_id)?.nome || `Atleta ${p.atleta_id}`;
+    if (!grupos[nome]) grupos[nome] = [];
+    grupos[nome].push(p);
+  });
+
+  const statusLabel = { confirmada:'✅ Confirmada', a_definir:'⏳ A definir', realizada:'🏅 Realizada' };
+  const statusColor = { confirmada:'#34C759', a_definir:'#FF9500', realizada:'#5AC8FA' };
+
+  el.innerHTML = Object.entries(grupos).map(([nome, ps]) => `
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;
+                  letter-spacing:.07em;margin-bottom:8px;padding-bottom:4px;
+                  border-bottom:1px solid rgba(255,255,255,0.1)">${nome}</div>
+      ${ps.sort((a,b)=>(a.num_prova||99)-(b.num_prova||99)).map(p => `
+        <div style="display:grid;grid-template-columns:32px 1fr auto;gap:8px;align-items:center;
+                    padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+          <div style="font-size:18px;text-align:center">${provaIcon(p.prova)}</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--text1)">
+              ${p.num_prova ? `<span style="color:var(--text3);font-size:11px">#${p.num_prova}</span> ` : ''}
+              ${p.prova}
+              ${p.etapa ? `<span style="color:var(--text3);font-size:11px"> · ${p.etapa}</span>` : ''}
+            </div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;display:flex;gap:10px;flex-wrap:wrap">
+              ${p.serie ? `<span>📋 ${p.serie}ª série</span>` : ''}
+              ${p.raia  ? `<span>🏊 Raia ${p.raia}</span>` : ''}
+              ${p.tempo_inscricao ? `<span>⏱ Inscrição: <code style="color:#FFD60A">${p.tempo_inscricao}</code></span>` : ''}
+              ${p.tempo_final     ? `<span>🏅 Final: <code style="color:#34C759">${p.tempo_final}</code></span>` : ''}
+              ${p.colocacao       ? `<span>🥇 ${p.colocacao}</span>` : ''}
+              ${p.horario ? `<span>🕐 ${p.horario}</span>` : ''}
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            <span style="font-size:10px;color:${statusColor[p.status]||'var(--text3)'};font-weight:600">
+              ${statusLabel[p.status]||p.status}
+            </span>
+            <button onclick="editarProvaComp(${p.id})"
+              style="font-size:10px;padding:2px 8px;background:rgba(255,255,255,0.08);
+                     border:none;border-radius:4px;color:var(--text2);cursor:pointer">✎</button>
+            <button onclick="deletarProva(${p.id})"
+              style="font-size:10px;padding:2px 8px;background:rgba(255,80,80,0.15);
+                     border:none;border-radius:4px;color:#ff6b6b;cursor:pointer">✕</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+function provaIcon(prova) {
+  if (!prova) return '🏊';
+  const p = prova.toLowerCase();
+  if (p.includes('costas'))    return '🔄';
+  if (p.includes('peito'))     return '🐸';
+  if (p.includes('borboleta')) return '🦋';
+  if (p.includes('medley'))    return '⭐';
+  return '🏊';
+}
+
+// Registrar tempo final de uma prova
+async function editarProvaComp(pid) {
+  const tempo = prompt('Tempo final (MM:SS.cc) — deixe vazio para cancelar:');
+  if (tempo === null) return;
+  const colocacao = prompt('Colocação (ex: 3°) — opcional:') || '';
+  await fetch(`/api/provas/${pid}`, {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      prova: '', horario: '', status: 'realizada',
+      tempo_final: tempo, colocacao
+    })
+  });
+  await loadProvasComp(editingCompId);
+  showToast('Resultado salvo!');
+}
+</script>
 </body>
 </html>
