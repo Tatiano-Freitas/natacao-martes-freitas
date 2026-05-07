@@ -1328,6 +1328,8 @@ async function renderDiaDaProva() {
   const container = document.getElementById("ddp-timeline-container");
   document.getElementById("ddp-btn-print").style.display = "none";
   document.getElementById("ddp-btn-add-nut").style.display = "none";
+  document.getElementById("ddp-btn-add-prova").style.display = "none";
+  document.getElementById("ddp-btn-import-pdf").style.display = "none";
 
   if (!compId) {
     container.innerHTML = `<div class="glass-card"><div class="glass-card-inner" style="text-align:center;padding:40px 20px">
@@ -1335,6 +1337,9 @@ async function renderDiaDaProva() {
       <div style="color:var(--text3);font-size:14px">Selecione uma competição.</div></div></div>`;
     return;
   }
+
+  document.getElementById("ddp-btn-add-prova").style.display = "";
+  document.getElementById("ddp-btn-import-pdf").style.display = "";
 
   // carrega provas + nutrição da competição
   ddpProvas = await fetch(`/api/competicoes/${compId}/provas`).then(r => r.json());
@@ -1367,15 +1372,12 @@ async function renderDiaDaProva() {
   let nuts = ddpNutItems.filter(n => !n.atleta_id || n.atleta_id === atletaId);
 
   if (dia) {
-    // Filtra provas pela data_prova; provas sem data ficam visíveis em todos os dias
-    // só se a competição for de UM dia só (nesse caso o "todos os dias" e o filtro batem).
     provas = provas.filter(p => {
       if (p.data_prova) return p.data_prova === dia;
-      // Sem data registrada: mostra apenas se for o único dia da competição
       return diasComp.length === 1;
     });
-    // Filtra nutrição: itens não têm campo de data, então mostramos sempre que filtra dia
-    // (slots de nutrição costumam servir todo o dia/comp).
+    // Slots com data_slot definido filtram pelo dia; sem data_slot aparecem em todos (retrocompat)
+    nuts = nuts.filter(n => !n.data_slot || n.data_slot === dia);
   }
 
   if (provas.length === 0 && nuts.length === 0) {
@@ -1730,8 +1732,9 @@ async function confirmarImportPdf() {
 function abrirModalNutSlot() {
   const compId = +document.getElementById("ddp-comp").value;
   const atletaId = +document.getElementById("ddp-atleta").value;
+  const dia = document.getElementById("ddp-dia").value;
   if (!compId || !atletaId) { showToast("Selecione competição e atleta", true); return; }
-  nutSlotEditing = {comp_id: compId, atleta_id: atletaId, plano_id: null, item_id: null};
+  nutSlotEditing = {comp_id: compId, atleta_id: atletaId, plano_id: null, item_id: null, data_slot: dia};
   document.getElementById("mns-horario").value = "";
   document.getElementById("mns-item").value = "";
   document.getElementById("mns-qtd").value = "";
@@ -1780,7 +1783,7 @@ async function salvarNutSlot() {
     momento: "entre",
     descricao: "",
     competicao_id: nutSlotEditing.comp_id,
-    items: [{horario, item, quantidade: qtd, obs}],
+    items: [{horario, item, quantidade: qtd, obs, data_slot: nutSlotEditing.data_slot || ""}],
   };
   const res = await fetch("/api/nutricao", {
     method: "POST",

@@ -512,6 +512,11 @@ def init_competicoes():
             if col not in cols:
                 conn.execute(f"ALTER TABLE competicao_provas ADD COLUMN {col} {typ}")
 
+        # Migração: data_slot em nutricao_items (filtro por dia na tela Dia da Prova)
+        cols_ni = [r[1] for r in conn.execute("PRAGMA table_info(nutricao_items)").fetchall()]
+        if "data_slot" not in cols_ni:
+            conn.execute("ALTER TABLE nutricao_items ADD COLUMN data_slot TEXT DEFAULT ''")
+
         # Migração: coluna 'periodo' em resultados (Manhã/Tarde/Noite)
         cols_r = [r[1] for r in conn.execute("PRAGMA table_info(resultados)").fetchall()]
         if "periodo" not in cols_r:
@@ -682,8 +687,8 @@ def add_nutricao():
         nid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         for item in d.get("items", []):
             conn.execute(
-                "INSERT INTO nutricao_items (plano_id,horario,item,quantidade,obs) VALUES (?,?,?,?,?)",
-                (nid, item.get("horario",""), item["item"], item.get("quantidade",""), item.get("obs","")))
+                "INSERT INTO nutricao_items (plano_id,horario,item,quantidade,obs,data_slot) VALUES (?,?,?,?,?,?)",
+                (nid, item.get("horario",""), item["item"], item.get("quantidade",""), item.get("obs",""), item.get("data_slot","")))
         return jsonify({"id": nid}), 201
 
 @app.route("/api/nutricao/<int:pid>", methods=["DELETE"])

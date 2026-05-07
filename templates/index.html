@@ -290,8 +290,10 @@
             </select>
           </div>
           <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-glass" id="ddp-btn-add-prova" onclick="abrirCompFromDdp(+document.getElementById('ddp-comp').value)" style="display:none">＋ Adicionar prova</button>
+            <button class="btn-glass" id="ddp-btn-import-pdf" onclick="abrirModalImportPdfFromDdp(+document.getElementById('ddp-comp').value)" style="display:none">📎 Importar PDF</button>
+            <button class="btn-glass" id="ddp-btn-add-nut" onclick="abrirModalNutSlot()" style="display:none">🥗 Adicionar nutrição</button>
             <button class="btn-glass" id="ddp-btn-print" onclick="imprimirDiaDaProva()" style="display:none">🖨️ Imprimir</button>
-            <button class="btn-glass" id="ddp-btn-add-nut" onclick="abrirModalNutSlot()" style="display:none">＋ Adicionar slot de nutrição</button>
           </div>
         </div>
       </div>
