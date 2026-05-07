@@ -1374,6 +1374,14 @@ async function renderDiaDaProva() {
   if (dia) {
     provas = provas.filter(p => {
       if (p.data_prova) return p.data_prova === dia;
+      // Sem data_prova: tenta inferir pelo número da etapa (1ª Etapa → dia 1, etc.)
+      if (p.etapa) {
+        const m = p.etapa.match(/(\d+)/);
+        if (m) {
+          const diaInferido = diasComp[parseInt(m[1]) - 1];
+          if (diaInferido) return diaInferido === dia;
+        }
+      }
       return diasComp.length === 1;
     });
     // Slots com data_slot definido filtram pelo dia; sem data_slot aparecem em todos (retrocompat)
