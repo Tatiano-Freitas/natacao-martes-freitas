@@ -860,24 +860,19 @@ function renderAtletasCheck(selecionados) {
   const c = document.getElementById("mc-atletas");
   c.innerHTML = atletas.map(a => {
     const sel = selecionados.includes(a.id);
-    // Importante: preventDefault no label evita que o navegador propague o clique
-    // pro <input> interno e dispare um segundo toggle (que cancelaria o nosso).
-    return `<label class="atleta-check${sel?" sel":""}" onclick="event.preventDefault(); toggleAtletaComp(${a.id}, this)">
-      <input type="checkbox"${sel?" checked":""} tabindex="-1" style="pointer-events:none"> ${a.nome}
+    return `<label class="atleta-check${sel?" sel":""}" onclick="toggleAtletaComp(${a.id},this)">
+      <input type="checkbox"${sel?" checked":""}> ${a.nome}
     </label>`;
   }).join("");
 }
 
 function toggleAtletaComp(id, el) {
-  const idx = atletas_sel_comp.indexOf(id);
-  if (idx >= 0) {
-    atletas_sel_comp.splice(idx, 1);
+  if (atletas_sel_comp.includes(id)) {
+    atletas_sel_comp = atletas_sel_comp.filter(x => x !== id);
     el.classList.remove("sel");
-    el.querySelector("input").checked = false;
   } else {
     atletas_sel_comp.push(id);
     el.classList.add("sel");
-    el.querySelector("input").checked = true;
   }
 }
 
@@ -1084,6 +1079,32 @@ document.querySelectorAll("[data-section]").forEach(btn=>{
 
 /* ── Boot real (após reatribuições) ────────────────────────────── */
 loadAll().then(function(){ checkMobileProva(); renderConfig(); });
+
+/* ── Fix: teclado virtual sobre campos dos modais (iOS/Android PWA) ── */
+(function() {
+  function ajustarModalTeclado() {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const kbHeight = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    const pb = kbHeight > 80 ? kbHeight + 8 : 28;
+    document.querySelectorAll('.modal-overlay').forEach(function(el) {
+      el.style.paddingBottom = pb + 'px';
+    });
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', ajustarModalTeclado);
+    window.visualViewport.addEventListener('scroll', ajustarModalTeclado);
+  }
+  // Garante que o campo focado fique visível acima do teclado
+  document.addEventListener('focusin', function(e) {
+    if (!e.target.closest('.modal-overlay.open')) return;
+    var tag = e.target.tagName;
+    if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') return;
+    setTimeout(function() {
+      e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 380);
+  });
+})();
 
 /* ══════════════════════════════════════════════════════════════
    DETALHE COMPETIÇÃO + PROVAS
