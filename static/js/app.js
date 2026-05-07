@@ -1456,9 +1456,10 @@ async function renderDiaDaProva() {
 function renderEventoDdp(e) {
   const cor = e.tipo === "prova" ? "#3aa8ff" : "#7be08a";
   const icon = e.tipo === "prova" ? "🏊" : "🥗";
-  const acoes = e.tipo === "nutricao" ? `
-    <button class="btn-glass" onclick="editarNutSlot(${e.raw.plano_id}, ${e.raw.id})" style="padding:3px 8px;font-size:11px">✎</button>
-    <button class="btn-glass" onclick="removerNutSlot(${e.raw.plano_id}, ${e.raw.id})" style="padding:3px 8px;font-size:11px">×</button>` : "";
+  const acoes = e.tipo === "nutricao"
+    ? `<button class="btn-glass" onclick="editarNutSlot(${e.raw.plano_id}, ${e.raw.id})" style="padding:3px 8px;font-size:11px">✎</button>
+       <button class="btn-glass" onclick="removerNutSlot(${e.raw.plano_id}, ${e.raw.id})" style="padding:3px 8px;font-size:11px">×</button>`
+    : `<button class="btn-glass" onclick="editarProvaDdp(${e.raw.id})" style="padding:3px 8px;font-size:11px">✎</button>`;
   return `
     <div class="ddp-evento ddp-evento-${e.tipo}" style="display:grid;grid-template-columns:60px 12px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);align-items:start">
       <div style="font-weight:600;color:var(--text2);font-size:14px;text-align:right;padding-top:2px">${e.horario || "—"}</div>
@@ -1505,6 +1506,13 @@ function imprimirDiaDaProva() {
 
 function abrirCompFromDdp(compId) {
   abrirDetComp(compId);
+}
+
+function editarProvaDdp(pid) {
+  const compId = +document.getElementById("ddp-comp").value;
+  detCompId = compId;
+  provasComp = ddpProvas;
+  abrirModalProvaEdit(pid);
 }
 
 function abrirModalImportPdfFromDdp(compId) {
@@ -1895,6 +1903,8 @@ async function salvarProvaEdit() {
     provasComp = await fetch(`/api/competicoes/${detCompId}/provas`).then(r => r.json());
     const c = competicoes.find(x => x.id === detCompId);
     if (c) renderProvasComp(c);
+    ddpProvas = provasComp;
+    renderDiaDaProva();
   } else {
     showToast("Erro ao salvar", true);
   }
@@ -1908,5 +1918,7 @@ async function deletarProvaDoEdit() {
   provasComp = await fetch(`/api/competicoes/${detCompId}/provas`).then(r => r.json());
   const c = competicoes.find(x => x.id === detCompId);
   if (c) renderProvasComp(c);
+  ddpProvas = provasComp;
+  renderDiaDaProva();
   showToast("Prova removida");
 }
