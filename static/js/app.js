@@ -1494,7 +1494,7 @@ function imprimirDiaDaProva() {
 }
 
 function abrirCompFromDdp(compId) {
-  abrirCompDet(compId);
+  abrirDetComp(compId);
 }
 
 function abrirModalImportPdfFromDdp(compId) {

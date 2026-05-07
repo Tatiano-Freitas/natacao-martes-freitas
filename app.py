@@ -808,6 +808,11 @@ def parse_pdf_torneio(pdf_bytes):
                                 linha_atleta_pdf = todas_linhas[i + j]
                                 break
 
+                # Contexto ampliado (próximas 6 linhas) para filtro por nome de atleta
+                contexto_atleta = " ".join(
+                    todas_linhas[i + j] for j in range(1, 7) if i + j < len(todas_linhas)
+                )
+
                 # nº prova
                 num_prova = None
                 m_np = re.search(r"prova\s*(\d{1,3})", linha_strip, re.IGNORECASE)
@@ -840,6 +845,7 @@ def parse_pdf_torneio(pdf_bytes):
                     "raia": raia,
                     "tempo_inscricao": tempo_insc or "",
                     "atleta_id": None,
+                    "_ctx": (linha_strip + " " + contexto_atleta).lower(),
                 })
     except Exception as e:
         return {"erro": f"Falha ao ler PDF: {type(e).__name__}: {e}"}
@@ -873,11 +879,30 @@ def importar_pdf_competicao(cid):
             "JOIN competicao_atletas ca ON ca.atleta_id=a.id "
             "WHERE ca.competicao_id=? ORDER BY a.id", (cid,)).fetchall()]
 
+    # Filtra apenas provas onde algum atleta registrado aparece no texto do PDF
+    if atletas:
+        # Palavras significativas (≥4 chars) de cada nome para matching tolerante
+        termos = []
+        for a in atletas:
+            termos += [w.lower() for w in a["nome"].split() if len(w) >= 4]
+
+        def _atleta_no_contexto(prova):
+            ctx = prova.get("_ctx", "")
+            return any(t in ctx for t in termos)
+
+        provas = [p for p in resultado["provas"] if _atleta_no_contexto(p)]
+    else:
+        provas = resultado["provas"]
+
+    # Remove campo interno antes de enviar ao frontend
+    for p in provas:
+        p.pop("_ctx", None)
+
     return jsonify({
         "competicao": {"id": comp["id"], "nome": comp["nome"]},
         "atletas_competicao": atletas,
         "total_provas_extraidas": len(resultado["provas"]),
-        "provas": resultado["provas"],
+        "provas": provas,
     })
 
 
