@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, jsonify
-import sqlite3, os, re
+import sqlite3, os, re, shutil
 
 app = Flask(__name__)
 # Railway: usa /data (volume persistente) se existir, senão pasta local
@@ -7,6 +7,21 @@ _local_data = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 _railway_data = "/data"
 _data_dir = _railway_data if os.path.exists(_railway_data) else _local_data
 DB = os.path.join(_data_dir, "natacao.db")
+
+# Na primeira execução com volume Railway vazio, copia o banco do repositório
+# para o volume persistente — preserva dados de seed/backup sem perder nada.
+def _migrate_to_volume():
+    if _data_dir != _railway_data:
+        return
+    if os.path.exists(DB):
+        return
+    local_db = os.path.join(_local_data, "natacao.db")
+    if not os.path.exists(local_db):
+        return
+    os.makedirs(_railway_data, exist_ok=True)
+    shutil.copy2(local_db, DB)
+
+_migrate_to_volume()
 
 def get_db():
     conn = sqlite3.connect(DB)
