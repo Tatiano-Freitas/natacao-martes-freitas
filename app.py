@@ -920,6 +920,15 @@ seed_data()
 init_competicoes()
 seed_competicoes()
 
+# Remove provas importadas sem horário E sem data — são entradas incompletas de PDF
+with get_db() as _conn:
+    _conn.execute("""
+        DELETE FROM competicao_provas
+        WHERE (horario IS NULL OR horario = '')
+        AND   (horario_prova IS NULL OR horario_prova = '')
+        AND   (data_prova IS NULL OR data_prova = '')
+    """)
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("RAILWAY_ENVIRONMENT") is None
