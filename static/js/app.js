@@ -1419,7 +1419,7 @@ async function renderDiaDaProva() {
     tipo: "nutricao",
     horario: n.horario || "",
     titulo: n.item,
-    detalhes: [n.quantidade, n.obs, n.plano_titulo].filter(Boolean).join(" · "),
+    detalhes: [n.quantidade, n.obs].filter(Boolean).join(" · "),
     raw: n,
   }));
   eventos.sort((a, b) => {
@@ -1785,15 +1785,27 @@ async function salvarNutSlot() {
   if (!item) { showToast("Item é obrigatório", true); return; }
 
   if (nutSlotEditing.plano_id && nutSlotEditing.item_id) {
-    // edição: como não há endpoint PUT específico de item, recriamos o plano inteiro.
-    // Estratégia simples: deleta o item antigo via remover, cria de novo.
-    showToast("Edição não suportada ainda — remova e adicione novamente", true);
+    // edição: atualiza o item via PUT
+    const res = await fetch(`/api/nutricao_items/${nutSlotEditing.item_id}`, {
+      method: "PUT",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({horario, item, quantidade: qtd, obs,
+        data_slot: nutSlotEditing.item?.data_slot || ""}),
+    });
+    if (res.ok) {
+      showToast("✓ Slot atualizado");
+      closeModalNutSlot();
+      await loadNutricao();
+      renderDiaDaProva();
+    } else {
+      showToast("Erro ao salvar", true);
+    }
     return;
   }
 
   // cria novo plano "Dia da prova" (1 plano por slot — simples e funciona)
   const payload = {
-    titulo: `Dia da prova · ${horario || "sem horário"}`,
+    titulo: "Dia da prova",
     tipo: "competicao",
     atleta_id: nutSlotEditing.atleta_id,
     momento: "entre",

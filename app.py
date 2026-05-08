@@ -698,6 +698,17 @@ def del_nutricao(pid):
         conn.execute("DELETE FROM nutricao_plano WHERE id=?", (pid,))
         return jsonify({"ok": True})
 
+@app.route("/api/nutricao_items/<int:iid>", methods=["PUT"])
+def update_nutricao_item(iid):
+    d = request.json
+    with get_db() as conn:
+        conn.execute(
+            "UPDATE nutricao_items SET horario=?,item=?,quantidade=?,obs=?,data_slot=? WHERE id=?",
+            (d.get("horario",""), d.get("item",""), d.get("quantidade",""),
+             d.get("obs",""), d.get("data_slot",""), iid))
+        row = conn.execute("SELECT * FROM nutricao_items WHERE id=?", (iid,)).fetchone()
+        return jsonify(dict(row))
+
 
 # ── Importação de PDF de torneio ────────────────────────────────────────────
 # Estratégia: extrai texto com pdfplumber, depois aplica regex tolerante
