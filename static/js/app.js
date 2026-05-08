@@ -1426,7 +1426,7 @@ async function renderDiaDaProva() {
     const dA = (a.raw && a.raw.data_prova) || "";
     const dB = (b.raw && b.raw.data_prova) || "";
     if (dA !== dB) return dA.localeCompare(dB);
-    return (a.horario || "99:99").localeCompare(b.horario || "99:99");
+    return (a.horario || "").localeCompare(b.horario || "");
   });
 
   const atleta = atletas.find(a => a.id === atletaId);
