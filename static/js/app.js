@@ -1422,6 +1422,7 @@ async function renderDiaDaProva() {
     detalhes: [n.quantidade, n.obs].filter(Boolean).join(" · "),
     raw: n,
   }));
+  console.log("[DdP sort] dia=", dia, "eventos=", eventos.map(e=>e.horario+"/"+e.tipo));
   eventos.sort((a, b) => {
     if (dia) {
       // Dia específico selecionado: ordena só por horário

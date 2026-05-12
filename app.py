@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, make_response
 import sqlite3, os, re, shutil
 
 app = Flask(__name__)
@@ -361,11 +361,14 @@ def _asset_v(rel_path):
 
 @app.route("/")
 def index():
-    return render_template(
+    resp = make_response(render_template(
         "index.html",
         css_v=_asset_v("css/style.css"),
         js_v=_asset_v("js/app.js"),
-    )
+    ))
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    return resp
 
 @app.route("/api/atletas")
 def api_atletas():
