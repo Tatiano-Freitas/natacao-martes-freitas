@@ -1465,16 +1465,23 @@ function renderEventoDdp(e) {
     ? `<button class="btn-glass" onclick="editarNutSlot(${e.raw.plano_id}, ${e.raw.id})" style="padding:3px 8px;font-size:11px">✎</button>
        <button class="btn-glass" onclick="removerNutSlot(${e.raw.plano_id}, ${e.raw.id})" style="padding:3px 8px;font-size:11px">×</button>`
     : `<button class="btn-glass" onclick="editarProvaDdp(${e.raw.id})" style="padding:3px 8px;font-size:11px">✎</button>`;
+  const isProva = e.tipo === "prova";
+  const highlightStyle = isProva
+    ? "background:linear-gradient(90deg,rgba(58,168,255,0.13) 0%,rgba(58,168,255,0.04) 100%);border-left:3px solid #3aa8ff;border-radius:8px;margin:4px 0;"
+    : "border-left:3px solid transparent;margin:4px 0;";
+  const horarioStyle = isProva
+    ? "font-weight:700;color:#3aa8ff;font-size:15px;text-align:right;padding-top:2px;"
+    : "font-weight:600;color:var(--text2);font-size:14px;text-align:right;padding-top:2px;";
   return `
-    <div class="ddp-evento ddp-evento-${e.tipo}" style="display:grid;grid-template-columns:60px 12px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);align-items:start">
-      <div style="font-weight:600;color:var(--text2);font-size:14px;text-align:right;padding-top:2px">${e.horario || "—"}</div>
+    <div class="ddp-evento ddp-evento-${e.tipo}" style="display:grid;grid-template-columns:60px 12px 1fr;gap:10px;padding:10px 8px;border-bottom:1px solid rgba(255,255,255,0.05);align-items:start;${highlightStyle}">
+      <div style="${horarioStyle}">${e.horario || "—"}</div>
       <div style="position:relative">
-        <div style="position:absolute;top:6px;left:50%;transform:translateX(-50%);width:10px;height:10px;border-radius:50%;background:${cor};box-shadow:0 0 0 3px rgba(${e.tipo==='prova'?'58,168,255':'123,224,138'},0.15)"></div>
+        <div style="position:absolute;top:6px;left:50%;transform:translateX(-50%);width:${isProva?'13':'10'}px;height:${isProva?'13':'10'}px;border-radius:50%;background:${cor};box-shadow:0 0 0 ${isProva?'4':'3'}px rgba(${isProva?'58,168,255':'123,224,138'},${isProva?'0.25':'0.15'})"></div>
         <div style="position:absolute;top:18px;bottom:-12px;left:50%;width:1px;background:rgba(255,255,255,0.08);transform:translateX(-50%)"></div>
       </div>
       <div>
         <div style="display:flex;justify-content:space-between;align-items:start;gap:8px">
-          <div style="font-weight:500;color:var(--text1);font-size:14px">${icon} ${escapeHtml(e.titulo)}</div>
+          <div style="font-weight:${isProva?'700':'500'};color:${isProva?'#e8f4ff':'var(--text1)'};font-size:${isProva?'15':'14'}px">${icon} ${escapeHtml(e.titulo)}</div>
           <div style="display:flex;gap:4px">${acoes}</div>
         </div>
         ${e.detalhes ? `<div style="font-size:12px;color:var(--text3);margin-top:3px">${escapeHtml(e.detalhes)}</div>` : ""}
