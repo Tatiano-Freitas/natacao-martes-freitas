@@ -1423,8 +1423,13 @@ async function renderDiaDaProva() {
     raw: n,
   }));
   eventos.sort((a, b) => {
-    const dA = (a.raw && a.raw.data_prova) || "";
-    const dB = (b.raw && b.raw.data_prova) || "";
+    if (dia) {
+      // Dia específico selecionado: ordena só por horário
+      return (a.horario || "").localeCompare(b.horario || "");
+    }
+    // Todos os dias: ordena por data (data_prova para provas, data_slot para nutrição), depois por horário
+    const dA = (a.raw && (a.raw.data_prova || a.raw.data_slot)) || "";
+    const dB = (b.raw && (b.raw.data_prova || b.raw.data_slot)) || "";
     if (dA !== dB) return dA.localeCompare(dB);
     return (a.horario || "").localeCompare(b.horario || "");
   });
