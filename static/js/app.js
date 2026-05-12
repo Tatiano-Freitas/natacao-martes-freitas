@@ -551,11 +551,10 @@ function renderIndicesTable() {
     return;
   }
 
-  // Best time per prova for this athlete
+  // Best time per prova for this athlete — filtrado pelo tamanho de piscina selecionado
   const bestMap = {};
   provasOf(curAtletaIdx).forEach(p => {
-    // match prova name — try exact and piscina-flexible
-    const rows = atletaRows.filter(r => r.prova === p);
+    const rows = atletaRows.filter(r => r.prova === p && parseInt(r.piscina) === parseInt(curPiscinaIdx));
     const b = rows.reduce((best, r) => (r.tempo_segundos != null && (best == null || r.tempo_segundos < best)) ? r.tempo_segundos : best, null);
     if (b != null) bestMap[p] = b;
   });
